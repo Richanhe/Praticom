@@ -1,16 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { lazy, Suspense, useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import DashboardView from './views/DashboardView';
-import DeliveriesView from './views/DeliveriesView';
 import FinancialView from './views/FinancialView';
-import AccessControlView from './views/AccessControlView';
-import ResidentsView from './views/ResidentsView';
-import ReservationsView from './views/ReservationsView';
 import AnnouncementsView from './views/AnnouncementsView';
 import MarketInventoryView from './views/MarketInventoryView';
 import { api } from './services/api';
 import { CheckCircle2, AlertTriangle, Info, X } from 'lucide-react';
+
+const CadastroRemote = lazy(() => import('mfeCadastro/Cadastro'));
+const OperacoesRemote = lazy(() => import('mfeOperacoes/Operacoes'));
 
 export default function App() {
   const [currentView, setCurrentView] = useState('dashboard');
@@ -84,24 +83,17 @@ export default function App() {
             />
           )}
 
-          {currentView === 'deliveries' && (
-            <DeliveriesView showToast={showToast} />
-          )}
+          <Suspense fallback={<div className="empty-state">Carregando módulo...</div>}>
+            {(currentView === 'residents' || currentView === 'access') && (
+              <CadastroRemote section={currentView} showToast={showToast} />
+            )}
+            {(currentView === 'reservations' || currentView === 'deliveries') && (
+              <OperacoesRemote section={currentView} showToast={showToast} />
+            )}
+          </Suspense>
 
           {currentView === 'financial' && (
             <FinancialView showToast={showToast} />
-          )}
-
-          {currentView === 'access' && (
-            <AccessControlView showToast={showToast} />
-          )}
-
-          {currentView === 'residents' && (
-            <ResidentsView showToast={showToast} />
-          )}
-
-          {currentView === 'reservations' && (
-            <ReservationsView showToast={showToast} />
           )}
 
           {currentView === 'announcements' && (

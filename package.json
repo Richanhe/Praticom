@@ -1,0 +1,13 @@
+{
+  "name": "praticom-microfrontends",
+  "private": true,
+  "scripts": {
+    "install:all": "npm install && npm install --prefix client && npm install --prefix mfe-cadastro && npm install --prefix mfe-operacoes",
+    "build:remotes": "npm run build --prefix mfe-cadastro && npm run build --prefix mfe-operacoes",
+    "build": "npm run build:remotes && npm run build --prefix client",
+    "start": "concurrently \"npm run preview --prefix mfe-cadastro -- --host 0.0.0.0 --port 3001\" \"npm run preview --prefix mfe-operacoes -- --host 0.0.0.0 --port 3002\" \"npm run dev --prefix client\""
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
