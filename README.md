@@ -17,6 +17,14 @@
 
 ---
 
+## 🌐 Site Publicado
+
+**Acesse:** **https://praticom.z1.web.core.windows.net/**
+
+Hospedado como site estático em uma **Conta de Armazenamento do Azure** (Azure Storage Account, container `$web`).
+
+---
+
 ## 📌 Visão Geral
 
 O **Praticom** é uma solução ERP completa para condomínios focada em eficiência operacional para síndicos e administradoras, agilidade para a portaria e praticidade e conveniência para os moradores.
@@ -71,48 +79,51 @@ A aplicação conta com arquitetura desacoplada (Frontend SPA em React + Backend
 
 ---
 
-## 🛠️ Tecnologias e Arquitetura
+## 🧩 Arquitetura de Microfrontends (Module Federation)
 
-### 🖥️ Frontend (`/client`)
-* **React 18**: Construção de interface reativa e modular baseada em componentes.
-* **Vite**: Bundler ultrarrápido para desenvolvimento e build otimizado.
-* **Lucide React**: Biblioteca moderna de ícones vetoriais.
-* **Design System Customizado**: CSS Vanilla com variáveis temáticas (Dark/Light mode), layout responsivo, glassmorphism e micro-interações.
+O frontend é dividido em **três aplicações React independentes**, integradas em tempo de execução com **Module Federation** (`@originjs/vite-plugin-federation`):
+
+| Aplicação | Papel | Expõe / Consome | Funcionalidades |
+|---|---|---|---|
+| **`client`** (shell / host) | Layout, navegação, dashboard e notificações | Consome `mfeCadastro/Cadastro` e `mfeOperacoes/Operacoes` | Dashboard, Financeiro, Mural de Avisos, Mercadinho |
+| **`mfe-cadastro`** (remote) | Microfrontend de cadastro | Expõe `./Cadastro` | Cadastro de Moradores e Controle de Acesso (Portaria) |
+| **`mfe-operacoes`** (remote) | Microfrontend de operações | Expõe `./Operacoes` | Reservas de Espaços e Controle de Encomendas |
+
+* Cada remote gera um `remoteEntry.js`, carregado sob demanda pelo shell (`React.lazy` + `Suspense`).
+* `react` e `react-dom` são compartilhados como *singleton*, evitando cópias duplicadas.
+* Em produção, os remotes são publicados no mesmo site, em `/mfe-cadastro/` e `/mfe-operacoes/`.
+
+### 💾 Dados
+
+Shell e microfrontends consomem a API REST do backend Express (`/server`) em `http://localhost:5000/api`.
+
+---
+
+## 🛠️ Tecnologias
+
+### 🖥️ Frontend (`/client`, `/mfe-cadastro`, `/mfe-operacoes`)
+* **React 18** e **Vite 5**
+* **Module Federation** via `@originjs/vite-plugin-federation`
+* **Lucide React**: ícones vetoriais
+* **Design System Customizado**: CSS Vanilla com variáveis temáticas (Dark/Light mode), layout responsivo e micro-interações.
 
 ### ⚙️ Backend (`/server`)
-* **Node.js & Express**: Servidor HTTP e rotas de API RESTful.
-* **CORS**: Middleware configurado para integração com o frontend.
-* **Database Engine**: Camada de persistência local (`condo_store.json`) com inicialização automática de sementes (*seed mock data*).
+* **Node.js & Express**: rotas da API RESTful.
+* **Persistência** em `condo_store.json`, com dados de demonstração iniciais.
 
 ---
 
 ## 📁 Estrutura de Pastas
 
 ```text
-condo-erp/
-├── client/                     # Aplicação Frontend (Vite + React)
-│   ├── public/                 # Arquivos estáticos
-│   ├── src/
-│   │   ├── components/         # Componentes reutilizáveis (Header, Sidebar, etc.)
-│   │   ├── services/           # Comunicação com a API (fetch client)
-│   │   ├── views/              # Telas da aplicação (Dashboard, Portaria, Financeiro...)
-│   │   ├── App.jsx             # Componente raiz e orquestrador de estado global
-│   │   ├── index.css           # Design system e folhas de estilo globais
-│   │   └── main.jsx            # Ponto de entrada do React
-│   ├── index.html              # HTML base com fontes Google (Plus Jakarta Sans & Outfit)
-│   ├── package.json            # Dependências e scripts do Frontend
-│   └── vite.config.js          # Configurações do Vite
-│
-├── server/                     # Servidor Backend (Node.js + Express)
-│   ├── condo_store.json        # Banco de dados local em JSON (criado dinamicamente)
-│   ├── database.js             # Modelos de dados, regras de negócio e seed inicial
-│   ├── package.json            # Dependências e scripts do Backend
-│   └── server.js               # Definição de rotas da API REST e inicialização
-│
-├── design/                     # Protótipos visuais, mockups de telas e componentes
-├── .gitignore                  # Regras de exclusão do Git
-├── start_app.ps1               # Script PowerShell para inicialização rápida do ambiente
-└── README.md                   # Documentação oficial do projeto
+Praticom/
+├── client/                 # Shell (host) do Module Federation
+├── mfe-cadastro/           # Remote: Moradores + Controle de Acesso
+├── mfe-operacoes/          # Remote: Reservas + Encomendas
+├── server/                 # Backend Express (API REST)
+├── design/                 # Protótipos visuais
+├── GRUPO.md                # Integrantes do grupo
+└── package.json            # Scripts de instalação, build e execução
 ```
 
 ---
@@ -120,50 +131,50 @@ condo-erp/
 ## 🚀 Como Executar o Projeto
 
 ### 📋 Pré-requisitos
-* [Node.js](https://nodejs.org/) (versão 18 ou superior)
-* Gerenciador de pacotes `npm` (ou `yarn` / `pnpm`)
+* [Node.js](https://nodejs.org/) (versão 18 ou superior) e `npm`
 
----
+### ▶️ Execução local
 
-### Opção 1: Inicialização Rápida via Script (Windows PowerShell)
-
-Execute o script de automação presente na raiz do repositório:
-
-```powershell
-.\start_app.ps1
-```
-
-> Esse comando inicia o backend em segundo plano e inicializa o servidor de desenvolvimento do frontend.
-
----
-
-### Opção 2: Inicialização Manual
-
-#### 1️⃣ Inicializar o Servidor Backend:
 ```bash
-# Acesse o diretório do servidor
+# 1. Backend (em um terminal)
 cd server
-
-# Instale as dependências (caso seja a primeira execução)
 npm install
+npm run dev          # API em http://localhost:5000
 
-# Inicie a API
-npm run dev
+# 2. Frontend (em outro terminal, na raiz do repositório)
+npm run install:all  # dependências do shell e dos dois microfrontends
+npm run build:remotes
+npm start            # remotes em 3001/3002 e shell em 3000
 ```
-*A API estará disponível em: `http://localhost:5000`*
 
-#### 2️⃣ Inicializar o Frontend:
+*Aplicação disponível em: `http://localhost:3000`*
+
+Cada microfrontend também roda isolado: `npm run dev --prefix mfe-cadastro` (porta 3001) ou `npm run dev --prefix mfe-operacoes` (porta 3002).
+
+---
+
+## ☁️ Publicação no Azure (Conta de Armazenamento)
+
 ```bash
-# Abra um novo terminal e acesse a pasta client
-cd client
-
-# Instale as dependências (caso seja a primeira execução)
-npm install
-
-# Inicie o servidor Vite
-npm run dev
+# Builda os dois remotes e o shell (cada um gera seu próprio dist/)
+npm run build
 ```
-*O aplicativo estará disponível em: `http://localhost:5173`*
+
+No container `$web` da conta de armazenamento (com *Site estático* habilitado), os arquivos ficam assim:
+
+| Origem | Destino no `$web` |
+|---|---|
+| `client/dist/*` | `/` (raiz) |
+| `mfe-cadastro/dist/assets/*` | `/mfe-cadastro/assets/` |
+| `mfe-operacoes/dist/assets/*` | `/mfe-operacoes/assets/` |
+
+Exemplo via Azure CLI:
+
+```bash
+az storage blob upload-batch --account-name praticom --destination '$web' --source client/dist --overwrite
+az storage blob upload-batch --account-name praticom --destination '$web' --destination-path mfe-cadastro/assets --source mfe-cadastro/dist/assets --overwrite
+az storage blob upload-batch --account-name praticom --destination '$web' --destination-path mfe-operacoes/assets --source mfe-operacoes/dist/assets --overwrite
+```
 
 ---
 
@@ -200,7 +211,7 @@ npm run dev
 
 ## 🎨 Protótipos e Design
 
-Os protótipos de alta fidelidade e referências visuais estão organizados no diretório [`design/`](file:///c:/Users/richa/.gemini/antigravity-ide/scratch/condo-erp/design), cobrindo telas como:
+Os protótipos de alta fidelidade e referências visuais estão organizados no diretório [`design/`](design/), cobrindo telas como:
 * Painel da Síndica & Módulos Administrativos
 * Painel da Portaria & Fila de Entrada
 * Acesso Inteligente (Face ID)
