@@ -180,4 +180,25 @@ export class DeliveryDAO {
     stmt.run(picked_up_by || 'Morador', delivery.id);
     return this.getDelivery(delivery.id);
   }
+
+  cancelDelivery(id, { reason, cancelledBy, condominiumId } = {}) {
+    const delivery = this.getDelivery(id, condominiumId);
+    if (!delivery) {
+      throw new Error('Encomenda não encontrada.');
+    }
+    if (delivery.status === 'delivered') {
+      throw new Error('Não é possível cancelar uma encomenda que já foi entregue.');
+    }
+
+    this.db.prepare(`
+      UPDATE deliveries
+      SET status = 'CANCELLED',
+          cancelled_at = CURRENT_TIMESTAMP,
+          cancelled_by = ?,
+          cancellation_reason = ?
+      WHERE id = ?
+    `).run(cancelledBy || 'Administração', reason || 'Cancelada', delivery.id);
+
+    return this.getDelivery(delivery.id);
+  }
 }

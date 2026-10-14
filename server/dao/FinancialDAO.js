@@ -125,7 +125,9 @@ export class FinancialDAO {
       },
       currentBalance: incomePaid - expensePaid,
       default_rate: parseFloat(defaultRate.toFixed(1)),
-      delinquencyByUnit
+      delinquencyByUnit,
+      default_amount: totals?.income_overdue || 0,
+      overdue_count: overdueCount
     };
   }
 

@@ -173,7 +173,7 @@ export class AnnouncementDAO {
       params.push(term, term);
     }
 
-    sql += ' ORDER BY created_at DESC';
+    sql += ' ORDER BY is_pinned DESC, created_at DESC';
     return this.db.prepare(sql).all(params);
   }
 

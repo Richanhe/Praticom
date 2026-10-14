@@ -93,6 +93,7 @@ app.get('/api/dashboard', checkModuleAvailability('dashboard'), async (req, res)
     const hasAccess = condominiumDAO.isModuleEnabled(condominiumId, 'access');
     const hasFinancial = condominiumDAO.isModuleEnabled(condominiumId, 'financial');
     const hasReservations = condominiumDAO.isModuleEnabled(condominiumId, 'reservations');
+    const hasMarket = condominiumDAO.isModuleEnabled(condominiumId, 'market');
 
     const deliveries = hasDeliveries ? deliveryDAO.getDeliveries({ condominiumId }) : [];
     const pendingDeliveries = deliveries.filter(d => ['pending', 'PENDING', 'RECEBIDA'].includes(d.status));
@@ -100,19 +101,42 @@ app.get('/api/dashboard', checkModuleAvailability('dashboard'), async (req, res)
     const accessLogs = hasAccess ? accessDAO.getAccessLogs({ condominiumId }) : [];
     const activeAccess = accessLogs.filter(a => a.status === 'IN_PROPERTY' || a.status === 'inside');
 
-    const summary = hasFinancial ? financialDAO.getSummary({ condominiumId }) : { default_amount: 0, default_rate: 0 };
+    const summary = hasFinancial ? financialDAO.getSummary({ condominiumId }) : null;
 
     const announcements = announcementDAO.getAnnouncements({ condominiumId });
-    const urgentAnnouncements = announcements.filter(a => a.priority === 'URGENTE' || a.priority === 'high');
+    const isUrgentOrPinned = (a) => {
+      const p = String(a.priority || '').toLowerCase();
+      const isUrgent = p === 'urgente' || p === 'urgent' || p === 'high' || p === 'alta';
+      const isPinned = a.is_pinned === 1 || a.is_pinned === true;
+      return isUrgent || isPinned;
+    };
+    const urgentAnnouncements = announcements
+      .filter(isUrgentOrPinned)
+      .sort((a, b) => {
+        const aPinned = (a.is_pinned === 1 || a.is_pinned === true) ? 1 : 0;
+        const bPinned = (b.is_pinned === 1 || b.is_pinned === true) ? 1 : 0;
+        if (bPinned !== aPinned) return bPinned - aPinned;
+        return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+      });
 
+    const today = new Date().toLocaleDateString('en-CA');
     const reservations = hasReservations ? spaceDAO.getReservations({ condominiumId }) : [];
+    const todayReservations = reservations.filter(r => r.reservation_date === today && (r.status === 'CONFIRMED' || r.status === 'Confirmada'));
+
+    const marketProducts = hasMarket ? marketDAO.getProducts({ condominiumId }) : [];
+    const lowStockItems = marketProducts.filter(p => (p.stock_quantity ?? p.stock ?? 0) <= (p.min_stock ?? 5));
 
     const data = {
       metrics: {
         pendingDeliveries: hasDeliveries ? pendingDeliveries.length : null,
         activeAccess: hasAccess ? activeAccess.length : null,
-        overdueAmount: hasFinancial ? (summary.default_amount || 0) : null,
-        defaultRate: hasFinancial ? (summary.default_rate || 0) : null
+        activeVisitors: hasAccess ? activeAccess.length : null,
+        balance: hasFinancial ? (summary?.currentBalance ?? 0) : null,
+        overdueAmount: hasFinancial ? (summary?.default_amount ?? summary?.income?.overdue ?? 0) : null,
+        overdueCount: hasFinancial ? (summary?.overdue_count ?? summary?.delinquencyByUnit?.length ?? 0) : null,
+        defaultRate: hasFinancial ? (summary?.default_rate ?? 0) : null,
+        todayReservations: hasReservations ? todayReservations.length : null,
+        lowStockItems: hasMarket ? lowStockItems.length : null
       },
       recentAccess: activeAccess.slice(0, 5),
       recentDeliveries: pendingDeliveries.slice(0, 5),

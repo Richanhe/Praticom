@@ -162,25 +162,34 @@ export default function AnnouncementsView({ showToast }) {
             Nenhum comunicado encontrado no mural.
           </div>
         ) : (
-          announcements.map((ann) => {
-            const isUrgent = ann.priority === 'urgent' || ann.priority === 'high';
+          [...announcements]
+            .sort((a, b) => {
+              const aPinned = (a.is_pinned === 1 || a.is_pinned === true) ? 1 : 0;
+              const bPinned = (b.is_pinned === 1 || b.is_pinned === true) ? 1 : 0;
+              if (bPinned !== aPinned) return bPinned - aPinned;
+              return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+            })
+            .map((ann) => {
+              const isPinned = ann.is_pinned === 1 || ann.is_pinned === true;
+              const p = String(ann.priority || '').toLowerCase();
+              const isUrgent = p === 'urgent' || p === 'urgente' || p === 'high' || p === 'alta';
 
-            return (
-              <div
-                key={ann.id}
-                className="card"
-                style={{
-                  borderLeft: isUrgent ? '5px solid var(--accent-danger)' : ann.is_pinned ? '5px solid var(--accent-primary)' : '1px solid var(--border-color)',
-                  background: isUrgent ? 'rgba(239, 68, 68, 0.04)' : undefined
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                    {ann.is_pinned === 1 && (
-                      <span className="badge badge-purple" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <Pin size={12} /> Fixado
-                      </span>
-                    )}
+              return (
+                <div
+                  key={ann.id}
+                  className="card"
+                  style={{
+                    borderLeft: isPinned ? '5px solid var(--accent-purple)' : isUrgent ? '5px solid var(--accent-danger)' : '1px solid var(--border-color)',
+                    background: isPinned ? 'rgba(168, 85, 247, 0.03)' : isUrgent ? 'rgba(239, 68, 68, 0.04)' : undefined
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                      {isPinned && (
+                        <span className="badge badge-purple" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <Pin size={12} /> Fixado
+                        </span>
+                      )}
                     <span className={`badge ${ann.priority === 'urgent' ? 'badge-danger' :
                         ann.priority === 'high' ? 'badge-warning' : 'badge-info'
                       }`}>

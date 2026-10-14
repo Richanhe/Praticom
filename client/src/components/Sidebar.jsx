@@ -19,7 +19,7 @@ export default function Sidebar({ currentView, setCurrentView, stats, availableM
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'deliveries', label: 'Controle de Encomendas', icon: Package, badge: stats?.pendingDeliveries, badgeAlert: stats?.pendingDeliveries > 0 },
     { id: 'financial', label: 'Financeiro & Taxas', icon: DollarSign, badge: stats?.overdueCount ? `${stats.overdueCount} pendentes` : null, badgeAlert: stats?.overdueCount > 0 },
-    { id: 'access', label: 'Portaria & Acessos', icon: ShieldCheck, badge: stats?.activeVisitors ? `${stats.activeVisitors} no prédio` : null },
+    { id: 'access', label: 'Portaria & Acessos', icon: ShieldCheck, badge: (stats?.activeVisitors ?? stats?.activeAccess) ? `${stats?.activeVisitors ?? stats?.activeAccess} no prédio` : null },
     { id: 'residents', label: 'Cadastro de Pessoas', icon: Users },
     { id: 'territory', label: 'Condomínios & Blocos', icon: Building2 },
     { id: 'reservations', label: 'Reservas (1h/dia)', icon: CalendarDays, badge: stats?.todayReservations ? `${stats.todayReservations} hoje` : null },
