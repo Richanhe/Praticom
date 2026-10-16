@@ -15,7 +15,7 @@ import {
   Pencil
 } from 'lucide-react';
 import { api } from '../services/api';
-import CrudModal from '../components/CrudModal';
+import CrudModal, { DeleteConfirmModal } from '../components/CrudModal';
 
 const EMPTY_RESIDENT = {
   unit_id: '',
@@ -59,6 +59,7 @@ export default function ResidentsView({ showToast }) {
 
   // Form veículo
   const [vehicleForm, setVehicleForm] = useState(EMPTY_VEHICLE);
+  const [deleteConfirmation, setDeleteConfirmation] = useState(null);
 
   const loadData = async () => {
     try {
@@ -135,14 +136,19 @@ export default function ResidentsView({ showToast }) {
   };
 
   const handleDeleteResident = async (id, name) => {
-    if (!window.confirm(`Deseja realmente remover o cadastro de ${name}?`)) return;
-    try {
-      await api.deleteResident(id);
-      showToast(`Morador ${name} removido.`, 'info');
-      loadData();
-    } catch (err) {
-      showToast(err.message || 'Erro ao remover morador.', 'danger');
-    }
+    setDeleteConfirmation({
+      message: `Deseja realmente remover o cadastro de ${name}?`,
+      onConfirm: async () => {
+        try {
+          await api.deleteResident(id);
+          showToast(`Morador ${name} removido.`, 'info');
+          setDeleteConfirmation(null);
+          loadData();
+        } catch (err) {
+          showToast(err.message || 'Erro ao remover morador.', 'danger');
+        }
+      }
+    });
   };
 
   const openCreateVehicleModal = () => {
@@ -194,15 +200,19 @@ export default function ResidentsView({ showToast }) {
 
   const handleDeleteVehicle = async (vehicle) => {
     const confirmMsg = `Deseja realmente excluir o veículo "${vehicle.model}" (Placa: ${vehicle.plate})? Esta ação não afetará o morador ou apartamento.`;
-    if (!window.confirm(confirmMsg)) return;
-
-    try {
-      await api.deleteVehicle(vehicle.id);
-      showToast(`Veículo ${vehicle.plate} excluído com sucesso.`, 'info');
-      loadData();
-    } catch (err) {
-      showToast(err.message || 'Erro ao excluir veículo.', 'danger');
-    }
+    setDeleteConfirmation({
+      message: confirmMsg,
+      onConfirm: async () => {
+        try {
+          await api.deleteVehicle(vehicle.id);
+          showToast(`Veículo ${vehicle.plate} excluído com sucesso.`, 'info');
+          setDeleteConfirmation(null);
+          loadData();
+        } catch (err) {
+          showToast(err.message || 'Erro ao excluir veículo.', 'danger');
+        }
+      }
+    });
   };
 
   const filteredVehicles = vehicles.filter((v) => {
@@ -712,6 +722,12 @@ export default function ResidentsView({ showToast }) {
           />
         </div>
       </CrudModal>
+      <DeleteConfirmModal
+        isOpen={Boolean(deleteConfirmation)}
+        onClose={() => setDeleteConfirmation(null)}
+        onConfirm={() => deleteConfirmation?.onConfirm()}
+        message={deleteConfirmation?.message}
+      />
     </div>
   );
 }

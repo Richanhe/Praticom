@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { X, Loader2 } from 'lucide-react';
+import { X, Loader2, AlertTriangle, Trash2 } from 'lucide-react';
 
 /**
  * Componente compartilhado e reutilizável de Modal para operações CRUD e formulários.
@@ -124,6 +124,55 @@ export function CrudModal({
         )}
       </div>
     </div>
+  );
+}
+
+export function DeleteConfirmModal({
+  isOpen,
+  onClose,
+  onConfirm,
+  title = 'Confirmar exclusão',
+  message,
+  isLoading = false
+}) {
+  return (
+    <CrudModal
+      isOpen={isOpen}
+      onClose={isLoading ? undefined : onClose}
+      title={title}
+      icon={AlertTriangle}
+      iconColor="#ef4444"
+      closeOnOverlayClick={!isLoading}
+      maxWidth="480px"
+      customFooter={(
+        <>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={onClose}
+            disabled={isLoading}
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            className="btn btn-danger"
+            onClick={onConfirm}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                <Loader2 size={16} className="animate-spin" /> Excluindo...
+              </span>
+            ) : (
+              <><Trash2 size={16} /> Excluir</>
+            )}
+          </button>
+        </>
+      )}
+    >
+      <p style={{ margin: 0, lineHeight: 1.6 }}>{message}</p>
+    </CrudModal>
   );
 }
 

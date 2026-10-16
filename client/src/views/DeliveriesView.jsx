@@ -16,7 +16,7 @@ import {
   Trash2
 } from 'lucide-react';
 import { api } from '../services/api';
-import CrudModal from '../components/CrudModal';
+import CrudModal, { DeleteConfirmModal } from '../components/CrudModal';
 
 const EMPTY_DELIVERY = {
   unit_id: '',
@@ -41,6 +41,7 @@ export default function DeliveriesView({ showToast }) {
   const [selectedDelivery, setSelectedDelivery] = useState(null);
   const [pickupPinInput, setPickupPinInput] = useState('');
   const [pickedUpByInput, setPickedUpByInput] = useState('');
+  const [deleteConfirmation, setDeleteConfirmation] = useState(null);
 
   // null = criando, objeto = editando
   const [editingDelivery, setEditingDelivery] = useState(null);
@@ -117,14 +118,19 @@ export default function DeliveriesView({ showToast }) {
   };
 
   const handleDelete = async (pkg) => {
-    if (!window.confirm(`Deseja realmente excluir a encomenda ${pkg.courier} do ${pkg.block} - Apto ${pkg.unit_number}?`)) return;
-    try {
-      await api.deleteDelivery(pkg.id);
-      showToast('Encomenda excluída.', 'info');
-      loadData();
-    } catch (err) {
-      showToast(err.message || 'Erro ao excluir encomenda.', 'danger');
-    }
+    setDeleteConfirmation({
+      message: `Deseja realmente excluir a encomenda ${pkg.courier} do ${pkg.block} - Apto ${pkg.unit_number}?`,
+      onConfirm: async () => {
+        try {
+          await api.deleteDelivery(pkg.id);
+          showToast('Encomenda excluída.', 'info');
+          setDeleteConfirmation(null);
+          loadData();
+        } catch (err) {
+          showToast(err.message || 'Erro ao excluir encomenda.', 'danger');
+        }
+      }
+    });
   };
 
   const handlePickup = async (e) => {
@@ -470,6 +476,12 @@ export default function DeliveriesView({ showToast }) {
           </div>
         </CrudModal>
       )}
+      <DeleteConfirmModal
+        isOpen={Boolean(deleteConfirmation)}
+        onClose={() => setDeleteConfirmation(null)}
+        onConfirm={() => deleteConfirmation?.onConfirm()}
+        message={deleteConfirmation?.message}
+      />
     </div>
   );
 }

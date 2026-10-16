@@ -65,9 +65,27 @@ export class ReservationConflictValidator extends AbstractBusinessValidator {
     }
 
     const startHour = parseInt(String(data.start_time).split(':')[0], 10);
+    const startMinute = parseInt(String(data.start_time).split(':')[1], 10);
     const endHour = parseInt(String(data.end_time).split(':')[0], 10);
-    if (!Number.isInteger(startHour) || !Number.isInteger(endHour)) {
+    const endMinute = parseInt(String(data.end_time).split(':')[1], 10);
+    if (
+      !Number.isInteger(startHour) ||
+      !Number.isInteger(startMinute) ||
+      !Number.isInteger(endHour) ||
+      !Number.isInteger(endMinute) ||
+      startMinute < 0 ||
+      startMinute > 59 ||
+      endMinute < 0 ||
+      endMinute > 59
+    ) {
       throw new Error('Horário da reserva inválido.');
+    }
+    if (targetDate.getTime() === today.getTime()) {
+      const now = new Date();
+      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+      if (startHour * 60 + startMinute <= currentMinutes) {
+        throw new Error('Não é permitido criar ou editar reservas em horários passados.');
+      }
     }
     if (endHour - startHour !== 1) {
       throw new Error('Cada reserva deve ter exatamente 1 hora de duração.');

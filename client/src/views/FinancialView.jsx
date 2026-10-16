@@ -18,7 +18,7 @@ import {
   Trash2
 } from 'lucide-react';
 import { api } from '../services/api';
-import CrudModal from '../components/CrudModal';
+import CrudModal, { DeleteConfirmModal } from '../components/CrudModal';
 
 export default function FinancialView({ showToast }) {
   const [transactions, setTransactions] = useState([]);
@@ -43,6 +43,7 @@ export default function FinancialView({ showToast }) {
     unit_id: '',
     status: 'pending'
   });
+  const [deleteConfirmation, setDeleteConfirmation] = useState(null);
 
   const loadData = async () => {
     try {
@@ -121,14 +122,19 @@ export default function FinancialView({ showToast }) {
   };
 
   const handleDelete = async (transaction) => {
-    if (!window.confirm(`Excluir o lançamento "${transaction.description}" no valor de R$ ${Number(transaction.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}?`)) return;
-    try {
-      await api.deleteFinancialTransaction(transaction.id);
-      showToast('Lançamento excluído.', 'info');
-      loadData();
-    } catch (err) {
-      showToast(err.message || 'Erro ao excluir lançamento.', 'danger');
-    }
+    setDeleteConfirmation({
+      message: `Excluir o lançamento "${transaction.description}" no valor de R$ ${Number(transaction.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}?`,
+      onConfirm: async () => {
+        try {
+          await api.deleteFinancialTransaction(transaction.id);
+          showToast('Lançamento excluído.', 'info');
+          setDeleteConfirmation(null);
+          loadData();
+        } catch (err) {
+          showToast(err.message || 'Erro ao excluir lançamento.', 'danger');
+        }
+      }
+    });
   };
 
   const handlePay = async (id) => {
@@ -481,6 +487,12 @@ export default function FinancialView({ showToast }) {
           )}
         </div>
       </CrudModal>
+      <DeleteConfirmModal
+        isOpen={Boolean(deleteConfirmation)}
+        onClose={() => setDeleteConfirmation(null)}
+        onConfirm={() => deleteConfirmation?.onConfirm()}
+        message={deleteConfirmation?.message}
+      />
     </div>
   );
 }

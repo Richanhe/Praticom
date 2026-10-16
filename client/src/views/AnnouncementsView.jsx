@@ -13,7 +13,7 @@ import {
   Bell
 } from 'lucide-react';
 import { api } from '../services/api';
-import CrudModal from '../components/CrudModal';
+import CrudModal, { DeleteConfirmModal } from '../components/CrudModal';
 import { useCrud } from '../hooks/useCrud';
 
 const EMPTY_ANNOUNCEMENT = {
@@ -35,6 +35,7 @@ export default function AnnouncementsView({ showToast }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingAnnouncement, setEditingAnnouncement] = useState(null);
   const [formData, setFormData] = useState(EMPTY_ANNOUNCEMENT);
+  const [deleteConfirmation, setDeleteConfirmation] = useState(null);
 
   const fetchAnnouncements = useCallback(() => api.getAnnouncements({
     category: categoryFilter,
@@ -100,14 +101,19 @@ export default function AnnouncementsView({ showToast }) {
   };
 
   const handleDelete = async (id, title) => {
-    if (!window.confirm(`Deseja remover o comunicado "${title}"?`)) return;
-    try {
-      await api.deleteAnnouncement(id);
-      showToast('Comunicado excluído do mural.', 'info');
-      loadData();
-    } catch (err) {
-      showToast(err.message || 'Erro ao excluir comunicado.', 'danger');
-    }
+    setDeleteConfirmation({
+      message: `Deseja remover o comunicado "${title}"?`,
+      onConfirm: async () => {
+        try {
+          await api.deleteAnnouncement(id);
+          showToast('Comunicado excluído do mural.', 'info');
+          setDeleteConfirmation(null);
+          loadData();
+        } catch (err) {
+          showToast(err.message || 'Erro ao excluir comunicado.', 'danger');
+        }
+      }
+    });
   };
 
   return (
@@ -346,6 +352,12 @@ export default function AnnouncementsView({ showToast }) {
           </label>
         </div>
       </CrudModal>
+      <DeleteConfirmModal
+        isOpen={Boolean(deleteConfirmation)}
+        onClose={() => setDeleteConfirmation(null)}
+        onConfirm={() => deleteConfirmation?.onConfirm()}
+        message={deleteConfirmation?.message}
+      />
     </div>
   );
 }

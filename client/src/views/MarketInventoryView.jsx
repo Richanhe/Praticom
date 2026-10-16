@@ -18,6 +18,7 @@ import {
   Pencil
 } from 'lucide-react';
 import { api } from '../services/api';
+import { DeleteConfirmModal } from '../components/CrudModal';
 
 const EMPTY_PRODUCT = {
   name: '',
@@ -51,6 +52,7 @@ export default function MarketInventoryView({ showToast }) {
   const [isNewProductModalOpen, setIsNewProductModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [newProductForm, setNewProductForm] = useState(EMPTY_PRODUCT);
+  const [deleteConfirmation, setDeleteConfirmation] = useState(null);
 
   const loadData = async () => {
     try {
@@ -164,15 +166,20 @@ export default function MarketInventoryView({ showToast }) {
   };
 
   const handleDeleteProduct = async (prod) => {
-    if (!window.confirm(`Deseja realmente excluir o produto ${prod.name}? O histórico de vendas será mantido.`)) return;
-    try {
-      await api.deleteMarketProduct(prod.id);
-      setCart(prev => prev.filter(item => item.product_id !== prod.id));
-      showToast(`Produto ${prod.name} excluído.`, 'info');
-      loadData();
-    } catch (err) {
-      showToast(err.message || 'Erro ao excluir produto.', 'danger');
-    }
+    setDeleteConfirmation({
+      message: `Deseja realmente excluir o produto ${prod.name}? O histórico de vendas será mantido.`,
+      onConfirm: async () => {
+        try {
+          await api.deleteMarketProduct(prod.id);
+          setCart(prev => prev.filter(item => item.product_id !== prod.id));
+          showToast(`Produto ${prod.name} excluído.`, 'info');
+          setDeleteConfirmation(null);
+          loadData();
+        } catch (err) {
+          showToast(err.message || 'Erro ao excluir produto.', 'danger');
+        }
+      }
+    });
   };
 
   // Funções do Carrinho de Autoatendimento
@@ -893,6 +900,12 @@ export default function MarketInventoryView({ showToast }) {
           </div>
         </div>
       )}
+      <DeleteConfirmModal
+        isOpen={Boolean(deleteConfirmation)}
+        onClose={() => setDeleteConfirmation(null)}
+        onConfirm={() => deleteConfirmation?.onConfirm()}
+        message={deleteConfirmation?.message}
+      />
     </div>
   );
 }
