@@ -1079,6 +1079,38 @@ h1, h2, h3, h4, h5, h6 {
   border-radius: var(--radius-sm);
 }
 
+.btn-icon {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-icon:hover {
+  color: var(--brand-forest);
+  border-color: var(--accent-primary);
+  background: var(--bg-primary);
+  transform: translateY(-1px);
+}
+
+.btn-icon.danger {
+  color: var(--accent-danger);
+}
+
+.btn-icon.danger:hover {
+  color: var(--accent-danger-text);
+  border-color: var(--accent-danger);
+  background: var(--accent-danger-bg);
+}
+
 /* ==========================================================================
    BADGES DE STATUS (Item 02 da Biblioteca de Componentes)
    - Retirar / Aprovada: Verde Menta

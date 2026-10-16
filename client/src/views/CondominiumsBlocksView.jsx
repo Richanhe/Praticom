@@ -5,6 +5,7 @@ import {
   Sliders, LayoutDashboard, ShieldCheck, Package, CalendarDays, DollarSign, ShoppingCart, Users, Megaphone
 } from 'lucide-react';
 import { api } from '../services/api';
+import { DeleteConfirmModal } from '../components/CrudModal';
 
 const emptyCondominium = { 
   name: '', cnpj: '', address: '', city: '', state: '', postal_code: '', phone: '', status: 'ACTIVE' 
@@ -253,9 +254,15 @@ export default function CondominiumsBlocksView({ showToast }) {
   };
 
   const handleDeleteBlock = async (block) => {
+    setDeletingBlock(block);
+  };
+
+  const handleConfirmDeleteBlock = async () => {
+    if (!deletingBlock) return;
     try {
-      await api.deleteBlock(block.id);
-      showToast(`Bloco "${block.name}" removido com sucesso.`, 'success');
+      await api.deleteBlock(deletingBlock.id);
+      showToast(`Bloco "${deletingBlock.name}" removido com sucesso.`, 'success');
+      setDeletingBlock(null);
       setBlocks(await api.getBlocks(selected));
       await load();
     } catch (err) {
@@ -356,34 +363,34 @@ export default function CondominiumsBlocksView({ showToast }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       {/* Topo / Métricas Rápidas de Condomínios */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
-        <div className="stat-card">
-          <div className="stat-icon-wrapper" style={{ background: 'var(--accent-mint)', color: 'var(--accent-mint-text)' }}>
+      <div className="metrics-grid" style={{ marginBottom: 0 }}>
+        <div className="metric-card">
+          <div className="metric-icon-box" style={{ background: 'var(--accent-mint)', color: 'var(--accent-mint-text)' }}>
             <Building2 size={24} />
           </div>
-          <div>
-            <div className="stat-value">{condominiums.length}</div>
-            <div className="stat-label">Condomínios Cadastrados</div>
+          <div className="metric-info">
+            <h4>Condomínios cadastrados</h4>
+            <div className="value">{condominiums.length}</div>
           </div>
         </div>
 
-        <div className="stat-card">
-          <div className="stat-icon-wrapper" style={{ background: 'var(--accent-info-bg)', color: 'var(--accent-info-text)' }}>
+        <div className="metric-card">
+          <div className="metric-icon-box" style={{ background: 'var(--accent-info-bg)', color: 'var(--accent-info-text)' }}>
             <Layers size={24} />
           </div>
-          <div>
-            <div className="stat-value">{condominiums.reduce((acc, c) => acc + (c.blocks_count || 0), 0)}</div>
-            <div className="stat-label">Total de Blocos/Torres</div>
+          <div className="metric-info">
+            <h4>Total de blocos/torres</h4>
+            <div className="value">{condominiums.reduce((acc, c) => acc + (c.blocks_count || 0), 0)}</div>
           </div>
         </div>
 
-        <div className="stat-card">
-          <div className="stat-icon-wrapper" style={{ background: 'var(--accent-purple-bg)', color: 'var(--accent-purple-text)' }}>
+        <div className="metric-card">
+          <div className="metric-icon-box" style={{ background: 'var(--accent-purple-bg)', color: 'var(--accent-purple-text)' }}>
             <MapPin size={24} />
           </div>
-          <div>
-            <div className="stat-value">{condominiums.reduce((acc, c) => acc + (c.units_count || 0), 0)}</div>
-            <div className="stat-label">Total de Unidades/Aptos</div>
+          <div className="metric-info">
+            <h4>Total de unidades/aptos</h4>
+            <div className="value">{condominiums.reduce((acc, c) => acc + (c.units_count || 0), 0)}</div>
           </div>
         </div>
       </div>
@@ -950,7 +957,7 @@ export default function CondominiumsBlocksView({ showToast }) {
       {/* ========================================================================== */}
       {editingCondo && (
         <div className="modal-overlay" onClick={() => setEditingCondo(null)}>
-          <div className="modal-container" onClick={e => e.stopPropagation()} style={{ maxWidth: 540 }}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 540 }}>
             <div className="modal-header">
               <div className="card-title">
                 <Edit3 size={20} color="var(--brand-forest)" /> Editar Condomínio #{editingCondo.id}
@@ -1059,7 +1066,7 @@ export default function CondominiumsBlocksView({ showToast }) {
       {/* ========================================================================== */}
       {deletingCondo && (
         <div className="modal-overlay" onClick={() => setDeletingCondo(null)}>
-          <div className="modal-container" onClick={e => e.stopPropagation()} style={{ maxWidth: 460 }}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 460 }}>
             <div className="modal-header" style={{ color: 'var(--accent-danger)' }}>
               <div className="card-title">
                 <AlertTriangle size={22} color="var(--accent-danger)" /> Confirmar Exclusão
@@ -1096,7 +1103,7 @@ export default function CondominiumsBlocksView({ showToast }) {
       {/* ========================================================================== */}
       {viewingCondo && (
         <div className="modal-overlay" onClick={() => setViewingCondo(null)}>
-          <div className="modal-container" onClick={e => e.stopPropagation()} style={{ maxWidth: 520 }}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 520 }}>
             <div className="modal-header">
               <div className="card-title">
                 <Building2 size={20} color="var(--brand-forest)" /> Detalhes do Condomínio
@@ -1125,14 +1132,24 @@ export default function CondominiumsBlocksView({ showToast }) {
                 <div><strong>CEP:</strong> {viewingCondo.postal_code || 'N/A'}</div>
               </div>
 
-              <div style={{ display: 'flex', gap: 12, paddingTop: 12, borderTop: '1px solid var(--border-subtle)' }}>
-                <div className="stat-card" style={{ flex: 1, padding: 12 }}>
-                  <div className="stat-value">{viewingCondo.blocks_count || 0}</div>
-                  <div className="stat-label">Blocos Cadastrados</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, paddingTop: 12, borderTop: '1px solid var(--border-subtle)' }}>
+                <div className="metric-card" style={{ padding: 14, gap: 12 }}>
+                  <div className="metric-icon-box" style={{ width: 40, height: 40, background: 'var(--accent-info-bg)', color: 'var(--accent-info-text)' }}>
+                    <Layers size={18} />
+                  </div>
+                  <div className="metric-info">
+                    <h4>Blocos cadastrados</h4>
+                    <div className="value" style={{ fontSize: '1.4rem' }}>{viewingCondo.blocks_count || 0}</div>
+                  </div>
                 </div>
-                <div className="stat-card" style={{ flex: 1, padding: 12 }}>
-                  <div className="stat-value">{viewingCondo.units_count || 0}</div>
-                  <div className="stat-label">Unidades Habitacionais</div>
+                <div className="metric-card" style={{ padding: 14, gap: 12 }}>
+                  <div className="metric-icon-box" style={{ width: 40, height: 40, background: 'var(--accent-purple-bg)', color: 'var(--accent-purple-text)' }}>
+                    <MapPin size={18} />
+                  </div>
+                  <div className="metric-info">
+                    <h4>Unidades habitacionais</h4>
+                    <div className="value" style={{ fontSize: '1.4rem' }}>{viewingCondo.units_count || 0}</div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1151,7 +1168,7 @@ export default function CondominiumsBlocksView({ showToast }) {
       {/* ========================================================================== */}
       {editingBlock && (
         <div className="modal-overlay" onClick={() => setEditingBlock(null)}>
-          <div className="modal-container" onClick={e => e.stopPropagation()} style={{ maxWidth: 440 }}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 440 }}>
             <div className="modal-header">
               <div className="card-title">
                 <Edit3 size={18} /> Editar Bloco #{editingBlock.id}
@@ -1199,7 +1216,7 @@ export default function CondominiumsBlocksView({ showToast }) {
       {/* ========================================================================== */}
       {isCreatingUnit && (
         <div className="modal-overlay" onClick={() => setIsCreatingUnit(false)}>
-          <div className="modal-container" onClick={e => e.stopPropagation()} style={{ maxWidth: 460 }}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 460 }}>
             <div className="modal-header">
               <div className="card-title">
                 <Plus size={20} color="var(--brand-forest)" /> Nova Unidade / Apartamento
@@ -1283,7 +1300,7 @@ export default function CondominiumsBlocksView({ showToast }) {
       {/* ========================================================================== */}
       {editingUnit && (
         <div className="modal-overlay" onClick={() => setEditingUnit(null)}>
-          <div className="modal-container" onClick={e => e.stopPropagation()} style={{ maxWidth: 460 }}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 460 }}>
             <div className="modal-header">
               <div className="card-title">
                 <Edit3 size={18} color="var(--brand-forest)" /> Editar Unidade #{editingUnit.id}
@@ -1365,7 +1382,7 @@ export default function CondominiumsBlocksView({ showToast }) {
       {/* ========================================================================== */}
       {deletingUnit && (
         <div className="modal-overlay" onClick={() => setDeletingUnit(null)}>
-          <div className="modal-container" onClick={e => e.stopPropagation()} style={{ maxWidth: 460 }}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 460 }}>
             <div className="modal-header" style={{ color: 'var(--accent-danger)' }}>
               <div className="card-title">
                 <AlertTriangle size={22} color="var(--accent-danger)" /> Confirmar Exclusão de Unidade
@@ -1396,7 +1413,12 @@ export default function CondominiumsBlocksView({ showToast }) {
           </div>
         </div>
       )}
-
+      <DeleteConfirmModal
+        isOpen={Boolean(deletingBlock)}
+        onClose={() => setDeletingBlock(null)}
+        onConfirm={handleConfirmDeleteBlock}
+        message={`Deseja realmente excluir o bloco "${deletingBlock?.name}"?`}
+      />
     </div>
   );
 }

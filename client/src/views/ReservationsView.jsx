@@ -19,6 +19,7 @@ import {
   Save
 } from 'lucide-react';
 import { api } from '../services/api';
+import { DeleteConfirmModal } from '../components/CrudModal';
 
 const initialSpaceForm = {
   name: '',
@@ -33,6 +34,26 @@ const formatLocalDate = (date) => {
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+};
+
+const getCurrentLocalDateTime = () => {
+  const now = new Date();
+  return {
+    date: formatLocalDate(now),
+    minutes: now.getHours() * 60 + now.getMinutes()
+  };
+};
+
+const timeToMinutes = (time) => {
+  const [hours, minutes] = String(time || '').split(':').map(Number);
+  return Number.isInteger(hours) && Number.isInteger(minutes)
+    ? hours * 60 + minutes
+    : NaN;
+};
+
+const isPastReservationStart = (date, time) => {
+  const current = getCurrentLocalDateTime();
+  return date === current.date && timeToMinutes(time) <= current.minutes;
 };
 
 const addHoursToTime = (time, hoursToAdd) => {
@@ -80,6 +101,7 @@ export default function ReservationsView({ showToast }) {
   const [reservationMode, setReservationMode] = useState('create');
   const [editingReservationId, setEditingReservationId] = useState(null);
   const [reservationForm, setReservationForm] = useState(initialReservationForm);
+  const [deleteConfirmation, setDeleteConfirmation] = useState(null);
 
   const resetSpaceForm = () => {
     setSpaceForm(initialSpaceForm);
@@ -209,7 +231,7 @@ export default function ReservationsView({ showToast }) {
 
     // Verificar se o slot já está ocupado
     const isOccupied = occupiedSlots.some(r => r.start_time === slot.start);
-    if (isOccupied) return;
+    if (isOccupied || isPastReservationStart(selectedDate, slot.start)) return;
 
     openReservationModal({ mode: 'create', slot });
   };
@@ -265,18 +287,20 @@ export default function ReservationsView({ showToast }) {
   };
 
   const handleDeleteSpace = async (space) => {
-    if (!window.confirm(`Excluir a área "${space.name}"?`)) return;
-
-    try {
-      await api.deleteSpace(space.id);
-      if (editingSpaceId === space.id) {
-        resetSpaceForm();
+    setDeleteConfirmation({
+      message: `Excluir a área "${space.name}"?`,
+      onConfirm: async () => {
+        try {
+          await api.deleteSpace(space.id);
+          if (editingSpaceId === space.id) resetSpaceForm();
+          showToast('Área removida com sucesso.', 'info');
+          setDeleteConfirmation(null);
+          loadData();
+        } catch (err) {
+          showToast(err.message || 'Erro ao excluir área.', 'danger');
+        }
       }
-      showToast('Área removida com sucesso.', 'info');
-      loadData();
-    } catch (err) {
-      showToast(err.message || 'Erro ao excluir área.', 'danger');
-    }
+    });
   };
 
   const handleReservationFieldChange = (field, value) => {
@@ -323,6 +347,11 @@ export default function ReservationsView({ showToast }) {
       return;
     }
 
+    if (isPastReservationStart(reservationForm.reservation_date, reservationForm.start_time)) {
+      showToast('Não é possível reservar um horário que já passou.', 'warning');
+      return;
+    }
+
     const payload = {
       space_id: parseInt(reservationForm.space_id, 10),
       resident_id: parseInt(reservationForm.resident_id, 10),
@@ -354,26 +383,36 @@ export default function ReservationsView({ showToast }) {
   };
 
   const handleCancelReservation = async (id, spaceName, time) => {
-    if (!window.confirm(`Deseja cancelar a reserva de ${spaceName} às ${time}?`)) return;
-    try {
-      await api.cancelReservation(id);
-      showToast('Reserva cancelada com sucesso.', 'info');
-      loadData();
-    } catch (err) {
-      showToast(err.message || 'Erro ao cancelar reserva.', 'danger');
-    }
+    setDeleteConfirmation({
+      title: 'Cancelar reserva',
+      message: `Deseja cancelar a reserva de ${spaceName} às ${time}?`,
+      onConfirm: async () => {
+        try {
+          await api.cancelReservation(id);
+          showToast('Reserva cancelada com sucesso.', 'info');
+          setDeleteConfirmation(null);
+          loadData();
+        } catch (err) {
+          showToast(err.message || 'Erro ao cancelar reserva.', 'danger');
+        }
+      }
+    });
   };
 
   const handleDeleteReservation = async (reservation) => {
-    if (!window.confirm(`Excluir permanentemente a reserva de ${reservation.space_name} às ${reservation.start_time}?`)) return;
-
-    try {
-      await api.deleteReservation(reservation.id);
-      showToast('Reserva excluída com sucesso.', 'info');
-      loadData();
-    } catch (err) {
-      showToast(err.message || 'Erro ao excluir reserva.', 'danger');
-    }
+    setDeleteConfirmation({
+      message: `Excluir permanentemente a reserva de ${reservation.space_name} às ${reservation.start_time}?`,
+      onConfirm: async () => {
+        try {
+          await api.deleteReservation(reservation.id);
+          showToast('Reserva excluída com sucesso.', 'info');
+          setDeleteConfirmation(null);
+          loadData();
+        } catch (err) {
+          showToast(err.message || 'Erro ao excluir reserva.', 'danger');
+        }
+      }
+    });
   };
 
   return (
@@ -393,6 +432,13 @@ export default function ReservationsView({ showToast }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
           <div style={{ width: '42px', height: '42px', borderRadius: '10px', background: 'rgba(59, 130, 246, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#60a5fa' }}>
             <Clock size={22} />
+            <DeleteConfirmModal
+              isOpen={Boolean(deleteConfirmation)}
+              onClose={() => setDeleteConfirmation(null)}
+              onConfirm={() => deleteConfirmation?.onConfirm()}
+              title={deleteConfirmation?.title || 'Confirmar exclusão'}
+              message={deleteConfirmation?.message}
+            />
           </div>
           <div>
             <div style={{ fontWeight: '800', color: 'var(--text-main)', fontSize: '1.05rem' }}>
@@ -621,12 +667,14 @@ export default function ReservationsView({ showToast }) {
           {timeSlots.map((slot) => {
             const reservationInSlot = occupiedSlots.find(r => r.start_time === slot.start);
             const isOccupied = !!reservationInSlot;
+            const isPast = isPastReservationStart(selectedDate, slot.start);
 
             return (
               <div
                 key={slot.start}
-                className={`slot-button ${isOccupied ? 'occupied' : ''}`}
-                onClick={() => !isOccupied && handleOpenBooking(slot)}
+                className={`slot-button ${isOccupied || isPast ? 'occupied' : ''}`}
+                aria-disabled={isOccupied || isPast}
+                onClick={() => !isOccupied && !isPast && handleOpenBooking(slot)}
               >
                 <div style={{ fontWeight: '700', fontSize: '0.95rem' }}>
                   {slot.start} - {slot.end}
@@ -639,6 +687,8 @@ export default function ReservationsView({ showToast }) {
                         {reservationInSlot.block} - {reservationInSlot.unit_number} ({reservationInSlot.resident_name})
                       </div>
                     </div>
+                  ) : isPast ? (
+                    <span style={{ color: 'var(--text-dim)' }}>Horário encerrado</span>
                   ) : (
                     <span style={{ color: '#10b981' }}>Disponível</span>
                   )}
@@ -802,6 +852,9 @@ export default function ReservationsView({ showToast }) {
                     <input
                       type="time"
                       className="form-control"
+                      min={reservationForm.reservation_date === getCurrentLocalDateTime().date
+                        ? `${String(new Date().getHours()).padStart(2, '0')}:${String(new Date().getMinutes()).padStart(2, '0')}`
+                        : undefined}
                       value={reservationForm.start_time}
                       onChange={(e) => handleReservationFieldChange('start_time', e.target.value)}
                     />

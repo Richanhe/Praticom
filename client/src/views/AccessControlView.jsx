@@ -15,6 +15,7 @@ import {
   Trash2
 } from 'lucide-react';
 import { api } from '../services/api';
+import { DeleteConfirmModal } from '../components/CrudModal';
 
 const formatAccessDate = (value, options) => {
   if (!value) return '—';
@@ -38,6 +39,7 @@ export default function AccessControlView({ showToast }) {
   const [statusFilter, setStatusFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [deleteConfirmation, setDeleteConfirmation] = useState(null);
 
   // Modal de entrada
   const [isEntryModalOpen, setIsEntryModalOpen] = useState(false);
@@ -116,13 +118,27 @@ export default function AccessControlView({ showToast }) {
   };
 
   const handleDelete = async (id, name) => {
-    if (!window.confirm(`Deseja excluir o registro de acesso de ${name}?`)) return;
+    setDeleteConfirmation({
+      message: `Deseja excluir o registro de acesso de ${name}?`,
+      onConfirm: async () => {
+        try {
+          await api.deleteAccess(id);
+          showToast('Registro de acesso excluído.', 'info');
+          setDeleteConfirmation(null);
+          loadData();
+        } catch (err) {
+          showToast(err.message || 'Erro ao excluir registro de acesso.', 'danger');
+        }
+      }
+    });
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteConfirmation) return;
     try {
-      await api.deleteAccess(id);
-      showToast('Registro de acesso excluído.', 'info');
-      loadData();
+      await deleteConfirmation.onConfirm();
     } catch (err) {
-      showToast(err.message || 'Erro ao excluir registro de acesso.', 'danger');
+      showToast(err.message || 'Erro ao excluir registro.', 'danger');
     }
   };
 
@@ -301,6 +317,12 @@ export default function AccessControlView({ showToast }) {
           </table>
         </div>
       </div>
+      <DeleteConfirmModal
+        isOpen={Boolean(deleteConfirmation)}
+        onClose={() => setDeleteConfirmation(null)}
+        onConfirm={confirmDelete}
+        message={deleteConfirmation?.message}
+      />
 
       {/* Modal: Registro de Nova Entrada */}
       {isEntryModalOpen && (
