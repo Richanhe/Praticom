@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Database First - CRUD</title>
+    <style>
+      :root { font-family: Arial, sans-serif; color: #17352a; background: #f3f7f4; }
+      body { max-width: 1100px; margin: 0 auto; padding: 32px 20px; }
+      .card { background: white; border: 1px solid #d7e3dc; border-radius: 14px; padding: 22px; margin-bottom: 20px; box-shadow: 0 3px 14px #17352a12; }
+      h1 { margin: 0 0 8px; } h2 { margin-top: 0; font-size: 1.1rem; }
+      .muted { color: #61756b; } form { display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; }
+      input, select, button { border: 1px solid #c6d5cc; border-radius: 8px; padding: 10px; font: inherit; }
+      button { cursor: pointer; background: #20734d; color: white; border-color: #20734d; font-weight: 700; }
+      button.secondary { background: white; color: #20734d; } button.danger { background: #a52e2e; border-color: #a52e2e; }
+      table { width: 100%; border-collapse: collapse; } th, td { text-align: left; padding: 12px 8px; border-bottom: 1px solid #e4ece7; }
+      td.actions { text-align: right; white-space: nowrap; } td.actions button { margin-left: 6px; padding: 7px 10px; }
+      @media (max-width: 700px) { form { grid-template-columns: 1fr; } table { display: block; overflow-x: auto; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>CRUD Database First</h1>
+      <p class="muted">Tela demonstrativa gerada sobre os modelos introspectados do banco SQLite.</p>
+
+      <section class="card">
+        <h2 id="form-title">Cadastrar condomínio</h2>
+        <form id="condo-form">
+          <input id="name" placeholder="Nome do condomínio" required>
+          <input id="city" placeholder="Cidade">
+          <button type="submit">Salvar</button>
+        </form>
+        <button id="cancel-edit" class="secondary" hidden>Cancelar edição</button>
+      </section>
+
+      <section class="card">
+        <h2>Condomínios cadastrados</h2>
+        <p id="status" class="muted">Carregando...</p>
+        <table>
+          <thead><tr><th>ID</th><th>Nome</th><th>Cidade</th><th>Status</th><th></th></tr></thead>
+          <tbody id="condominiums"></tbody>
+        </table>
+      </section>
+    </main>
+    <script>
+      const form = document.querySelector('#condo-form');
+      const nameInput = document.querySelector('#name');
+      const cityInput = document.querySelector('#city');
+      const rows = document.querySelector('#condominiums');
+      const status = document.querySelector('#status');
+      const formTitle = document.querySelector('#form-title');
+      const cancelEdit = document.querySelector('#cancel-edit');
+      let editingId = null;
+
+      async function load() {
+        const response = await fetch('/api/condominiums');
+        const items = await response.json();
+        rows.innerHTML = items.map(item => `
+          <tr>
+            <td>${item.id}</td><td>${item.name}</td><td>${item.city || '—'}</td><td>${item.status}</td>
+            <td class="actions">
+              <button class="secondary" onclick="editCondominium(${item.id}, '${String(item.name).replaceAll("'", "\\'")}', '${String(item.city || '').replaceAll("'", "\\'")}')">Editar</button>
+              <button class="danger" onclick="deleteCondominium(${item.id})">Excluir</button>
+            </td>
+          </tr>`).join('');
+        status.textContent = `${items.length} registro(s) carregado(s) pelo Prisma.`;
+      }
+
+      form.addEventListener('submit', async event => {
+        event.preventDefault();
+        const payload = { name: nameInput.value, city: cityInput.value };
+        const url = editingId ? `/api/condominiums/${editingId}` : '/api/condominiums';
+        const method = editingId ? 'PATCH' : 'POST';
+        const response = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        if (!response.ok) return alert((await response.json()).error || 'Não foi possível salvar.');
+        resetForm(); await load();
+      });
+
+      window.editCondominium = (id, name, city) => {
+        editingId = id; nameInput.value = name; cityInput.value = city;
+        formTitle.textContent = `Editar condomínio #${id}`; cancelEdit.hidden = false;
+      };
+      window.deleteCondominium = async id => {
+        if (!confirm(`Excluir o condomínio #${id}?`)) return;
+        const response = await fetch(`/api/condominiums/${id}`, { method: 'DELETE' });
+        if (!response.ok) return alert('Não foi possível excluir. Verifique os relacionamentos.');
+        await load();
+      };
+      function resetForm() {
+        editingId = null; form.reset(); formTitle.textContent = 'Cadastrar condomínio'; cancelEdit.hidden = true;
+      }
+      cancelEdit.addEventListener('click', resetForm);
+      load().catch(error => { status.textContent = `Erro: ${error.message}`; });
+    </script>
+  </body>
+</html>

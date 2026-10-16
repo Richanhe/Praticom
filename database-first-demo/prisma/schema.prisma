@@ -1,0 +1,256 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model access_logs {
+  id                  Int       @id @default(autoincrement())
+  visitor_name        String
+  document            String
+  type                String?   @default("Visitante")
+  destination_unit_id Int
+  entry_time          DateTime? @default(now())
+  exit_time           DateTime?
+  status              String?   @default("IN_PROPERTY")
+  notes               String?
+  company             String?
+  vehicle_plate       String?
+  authorized_by       String?
+  units               units     @relation(fields: [destination_unit_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([status], map: "idx_access_status")
+}
+
+model announcements {
+  id             Int       @id @default(autoincrement())
+  title          String
+  content        String
+  category       String?   @default("Geral")
+  priority       String?   @default("normal")
+  author         String?   @default("Síndico Geral")
+  target_block   String?   @default("Todos")
+  is_pinned      Int?      @default(0)
+  created_at     DateTime? @default(now())
+  expires_at     DateTime?
+  condominium_id Int?
+  block_id       Int?
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model app_features {
+  feature    String?  @id
+  enabled    Int
+  updated_at DateTime @default(now())
+
+  @@ignore
+}
+
+model blocks {
+  id             Int          @id @default(autoincrement())
+  condominium_id Int
+  name           String
+  description    String?
+  status         String       @default("ACTIVE")
+  created_at     DateTime?    @default(now())
+  condominiums   condominiums @relation(fields: [condominium_id], references: [id], onUpdate: NoAction)
+  units          units[]
+
+  @@unique([condominium_id, name], map: "sqlite_autoindex_blocks_1")
+  @@index([condominium_id], map: "idx_blocks_condominium")
+}
+
+model condominium_modules {
+  condominium_id Int
+  module_key     String
+  enabled        Int          @default(1)
+  updated_at     DateTime     @default(now())
+  condominiums   condominiums @relation(fields: [condominium_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([condominium_id, module_key])
+  @@index([condominium_id, module_key, enabled], map: "idx_condo_modules_lookup")
+}
+
+model condominiums {
+  id                  Int                   @id @default(autoincrement())
+  name                String
+  cnpj                String?               @unique(map: "sqlite_autoindex_condominiums_1")
+  address             String?
+  city                String?
+  state               String?
+  postal_code         String?
+  phone               String?
+  status              String                @default("ACTIVE")
+  created_at          DateTime?             @default(now())
+  blocks              blocks[]
+  condominium_modules condominium_modules[]
+}
+
+model deliveries {
+  id                  Int        @id @default(autoincrement())
+  unit_id             Int
+  resident_id         Int?
+  courier             String
+  tracking_code       String?
+  description         String?
+  status              String?    @default("pending")
+  pickup_code         String
+  notes               String?
+  received_at         DateTime?  @default(now())
+  picked_up_at        DateTime?
+  picked_up_by        String?
+  registered_at       DateTime?
+  registered_by       String?
+  received_by         String?
+  cancelled_at        DateTime?
+  cancelled_by        String?
+  cancellation_reason String?
+  residents           residents? @relation(fields: [resident_id], references: [id], onUpdate: NoAction)
+  units               units      @relation(fields: [unit_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([status], map: "idx_deliveries_status")
+}
+
+model financial_transactions {
+  id             Int       @id @default(autoincrement())
+  unit_id        Int?
+  description    String
+  amount         Float
+  type           String
+  category       String
+  status         String?   @default("PENDING")
+  due_date       DateTime
+  paid_at        DateTime?
+  condominium_id Int?
+  units          units?    @relation(fields: [unit_id], references: [id], onUpdate: NoAction)
+
+  @@index([status], map: "idx_financial_status")
+}
+
+model market_products {
+  id                Int                 @id @default(autoincrement())
+  name              String
+  category          String
+  price             Float
+  stock_quantity    Int?                @default(0)
+  barcode           String?
+  condominium_id    Int?
+  cost_price        Float?
+  min_stock         Int?                @default(5)
+  image_url         String?
+  market_sale_items market_sale_items[]
+}
+
+model market_sale_items {
+  id              Int              @id @default(autoincrement())
+  sale_id         Int
+  product_id      Int?
+  product_name    String
+  unit_price      Float
+  quantity        Int
+  line_total      Float
+  market_products market_products? @relation(fields: [product_id], references: [id], onUpdate: NoAction)
+  market_sales    market_sales     @relation(fields: [sale_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([sale_id], map: "idx_market_sale_items_sale")
+}
+
+model market_sales {
+  id                Int                 @id @default(autoincrement())
+  unit_id           Int
+  resident_id       Int
+  total_amount      Float
+  payment_method    String
+  created_at        DateTime?           @default(now())
+  market_sale_items market_sale_items[]
+  residents         residents           @relation(fields: [resident_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  units             units               @relation(fields: [unit_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model reservations {
+  id               Int       @id @default(autoincrement())
+  space_id         Int
+  unit_id          Int
+  resident_id      Int
+  reservation_date DateTime
+  start_time       String
+  end_time         String
+  total_price      Float?    @default(0)
+  status           String?   @default("CONFIRMED")
+  created_at       DateTime? @default(now())
+  guests_count     Int?      @default(0)
+  notes            String?
+  residents        residents @relation(fields: [resident_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  units            units     @relation(fields: [unit_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  spaces           spaces    @relation(fields: [space_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([reservation_date], map: "idx_reservations_date")
+}
+
+model residents {
+  id                Int            @id @default(autoincrement())
+  unit_id           Int
+  name              String
+  email             String?
+  phone             String?
+  cpf               String?
+  role              String?        @default("Proprietário")
+  emergency_contact String?
+  created_at        DateTime?      @default(now())
+  deliveries        deliveries[]
+  market_sales      market_sales[]
+  reservations      reservations[]
+  units             units          @relation(fields: [unit_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  vehicles          vehicles[]
+
+  @@index([unit_id], map: "idx_residents_unit")
+}
+
+model spaces {
+  id             Int            @id @default(autoincrement())
+  name           String
+  description    String?
+  capacity       Int
+  price_per_hour Float?         @default(0)
+  rules          String?
+  condominium_id Int?
+  reservations   reservations[]
+}
+
+model units {
+  id                     Int                      @id @default(autoincrement())
+  block                  String
+  number                 String
+  floor                  Int?
+  type                   String?                  @default("Residencial")
+  created_at             DateTime?                @default(now())
+  block_id               Int?
+  access_logs            access_logs[]
+  deliveries             deliveries[]
+  financial_transactions financial_transactions[]
+  market_sales           market_sales[]
+  reservations           reservations[]
+  residents              residents[]
+  blocks                 blocks?                  @relation(fields: [block_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  vehicles               vehicles[]
+
+  @@unique([block_id, number], map: "sqlite_autoindex_units_1")
+  @@index([block_id], map: "idx_units_block")
+}
+
+model vehicles {
+  id           Int        @id @default(autoincrement())
+  unit_id      Int
+  resident_id  Int?
+  plate        String
+  model        String
+  color        String?
+  type         String?    @default("Carro")
+  parking_spot String?
+  residents    residents? @relation(fields: [resident_id], references: [id], onUpdate: NoAction)
+  units        units      @relation(fields: [unit_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
